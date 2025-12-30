@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Color Matcher (Ultimate)</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f4f6f9; --text: #333; --border: #dfe3e8; --success: #28a745; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); max-width: 950px; margin: 0 auto; padding: 20px; line-height: 1.5; }
+        
+        /* Layout */
+        h1 { margin-bottom: 5px; color: #2c3e50; }
+        p.subtitle { margin-top: 0; color: #6c757d; margin-bottom: 25px; }
+        .grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        
+        /* Cards */
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card h3 { margin-top: 0; font-size: 1rem; color: #495057; border-bottom: 2px solid #f1f3f5; padding-bottom: 10px; margin-bottom: 15px; }
+
+        /* Inputs */
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #555; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
+        
+        /* Button & Status */
+        button.primary-btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        button.primary-btn:hover { background: #0056b3; }
+        button.primary-btn:disabled { background: #cbd3da; cursor: not-allowed; }
+        .status-bar { margin-top: 10px; font-size: 0.85rem; color: #666; display: flex; align-items: center; min-height: 20px; }
+        
+        /* Previews */
+        .preview-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; text-align: center; }
+        .color-preview-large { width: 70px; height: 70px; border-radius: 12px; border: 3px solid white; box-shadow: 0 0 0 1px #ccc; margin: 0 auto; transition: background 0.3s; }
+        .arrow { font-size: 1.5rem; color: #adb5bd; }
+        .hex-label { font-family: monospace; font-size: 0.9rem; margin-top: 5px; color: #555; }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        
+        .vis-swatch { width: 30px; height: 30px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); display: inline-block; vertical-align: middle; margin-right: 10px; }
+        code { background: #f1f3f5; padding: 4px 8px; border-radius: 4px; color: #e83e8c; font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.9rem; }
+        
+        /* Copy Button */
+        .copy-btn { background: white; border: 1px solid var(--border); color: #555; padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+        .copy-btn:hover { background: #f8f9fa; border-color: #ccc; }
+
+        /* Spinner */
+        .spinner { display: none; width: 16px; height: 16px; border: 2px solid #e9ecef; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <h1>LaTeX Color Matcher</h1>
+    <p class="subtitle">Generate accurate <code>xcolor</code> mix definitions (e.g. <code>Green!14!White</code>) for any RGB/Hex color.</p>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Configuration</h3>
+            
+            <div class="control-group">
+                <label>Target Color</label>
+                <input type="text" id="targetHex" value="DCFFDC" placeholder="#RRGGBB" maxlength="7">
+            </div>
+
+            <div class="control-group">
+                <label>Mix Depth (Bangs)</label>
+                <select id="depth">
+                    <option value="1">1 (e.g. Blue!50!Red)</option>
+                    <option value="2" selected>2 (e.g. Blue!50!Red!20!White)</option>
+                    <option value="3">3 (Complex - Slower)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Step Size</label>
+                <select id="stepSize">
+                    <option value="1">1% (Highest Precision)</option>
+                    <option value="2">2%</option>
+                    <option value="5" selected>5% (Standard)</option>
+                    <option value="10">10% (Fast)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Search Width (Beam)</label>
+                <select id="beamWidth">
+                    <option value="100">100 (Fast)</option>
+                    <option value="500">500 (Balanced)</option>
+                    <option value="2000">2000 (Deep Search)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Distance Metric</label>
+                <select id="metric">
+                    <option value="lab" selected>CIEDE2000 (Human Perception)</option>
+                    <option value="rgb">Euclidean RGB (Mathematical)</option>
+                </select>
+            </div>
+
+            <button class="primary-btn" id="solveBtn" onclick="runSolver()">Find Best Match</button>
+            
+            <div class="status-bar">
+                <span id="statusText">Ready</span>
+                <div id="spinner" class="spinner"></div>
+            </div>
+
+            <div class="preview-row" style="margin-top:25px; padding-top:20px; border-top:1px solid #eee;">
+                <div>
+                    <div id="targetPreview" class="color-preview-large" style="background-color: #DCFFDC;"></div>
+                    <div class="hex-label">Target</div>
+                </div>
+                <div class="arrow">&rarr;</div>
+                <div>
+                    <div id="resultPreview" class="color-preview-large" style="background-color: #ffffff;"></div>
+                    <div class="hex-label">Match</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Results</h3>
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 80px;">Diff</th>
+                        <th style="width: 120px;">Preview</th>
+                        <th>LaTeX Code</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999; padding: 30px;">
+                            Click "Find Best Match" to start searching.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+/**
+ * 1. COLOR DATA
+ * Includes 19 Standard Base Colors (lowercase) AND 68 Dvipsnames (Capitalized).
+ * Case sensitivity is important for xcolor.
+ */
+function rgbToCmyk(r, g, b) {
+    var k = 1 - Math.max(r, g, b);
+    if (k === 1) return [0, 0, 0, 1];
+    return [(1-r-k)/(1-k), (1-g-k)/(1-k), (1-b-k)/(1-k), k];
+}
+
+var COLOR_LIB = {};
+var DEFS = [
+    // Standard Bases (The "Pure" ones - CRITICAL for simple tints)
+    ["red",[1,0,0]], ["green",[0,1,0]], ["blue",[0,0,1]], ["cyan",[0,1,1]], ["magenta",[1,0,1]], ["yellow",[1,1,0]],
+    ["black",[0,0,0]], ["white",[1,1,1]], ["gray",[0.5,0.5,0.5]], ["lightgray",[0.75,0.75,0.75]], ["darkgray",[0.25,0.25,0.25]],
+    ["orange",[1,0.5,0]], ["lime",[0.75,1,0]], ["purple",[0.75,0,0.25]], ["teal",[0,0.5,0.5]], ["violet",[0.5,0,0.5]],
+    ["brown",[0.75,0.5,0.25]], ["pink",[1,0.75,0.75]], ["olive",[0.5,0.5,0]],
+    
+    // Dvipsnames (The "Fancy" ones)
+    ["Apricot",[1.0,0.8,0.6]], ["Aquamarine",[0.0,1.0,1.0]], ["Bittersweet",[0.76,0.01,0.0]],
+    ["BlueViolet",[0.54,0.17,0.89]], ["BrickRed",[0.72,0.0,0.0]], ["BurntOrange",[1.0,0.6,0.0]],
+    ["CadetBlue",[0.38,0.43,0.6]], ["CarnationPink",[1.0,0.43,0.78]], ["Cerulean",[0.0,0.7,1.0]],
+    ["CornflowerBlue",[0.39,0.58,0.93]], ["Dandelion",[1.0,0.71,0.16]], ["DarkOrchid",[0.6,0.2,0.8]],
+    ["Emerald",[0.0,1.0,0.5]], ["ForestGreen",[0.0,0.6,0.0]], ["Fuchsia",[1.0,0.0,1.0]],
+    ["Goldenrod",[1.0,0.9,0.1]], ["Green",[0.0,0.65,0.31]], ["GreenYellow",[0.85,1.0,0.31]],
+    ["JungleGreen",[0.0,1.0,0.5]], ["Lavender",[1.0,0.6,1.0]], ["LimeGreen",[0.5,1.0,0.0]],
+    ["Mahogany",[0.75,0.0,0.0]], ["Maroon",[0.69,0.0,0.0]], ["Melon",[1.0,0.5,0.5]],
+    ["MidnightBlue",[0.1,0.1,0.44]], ["Mulberry",[0.64,0.08,0.57]], ["NavyBlue",[0.06,0.46,1.0]],
+    ["OliveGreen",[0.0,0.6,0.0]], ["Orange",[1.0,0.5,0.0]], ["OrangeRed",[1.0,0.0,0.5]],
+    ["Orchid",[0.68,0.36,1.0]], ["Peach",[1.0,0.5,0.3]], ["Periwinkle",[0.5,0.5,1.0]],
+    ["PineGreen",[0.0,0.75,0.5]], ["Plum",[0.5,0.0,1.0]], ["ProcessBlue",[0.04,0.7,1.0]],
+    ["Purple",[0.5,0.0,0.5]], ["RawSienna",[0.55,0.0,0.0]], ["Red",[1,0,0]],
+    ["RedOrange",[1.0,0.23,0.13]], ["RedViolet",[0.67,0.05,0.57]], ["Rhodamine",[1.0,0.0,1.0]],
+    ["RoyalBlue",[0.0,0.44,1.0]], ["RoyalPurple",[0.47,0.2,0.73]], ["RubineRed",[1.0,0.0,0.54]],
+    ["Salmon",[1.0,0.47,0.62]], ["SeaGreen",[0.2,1.0,0.5]], ["Sepia",[0.3,0.1,0.0]],
+    ["SkyBlue",[0.38,1.0,0.88]], ["SpringGreen",[0.0,1.0,0.5]], ["Tan",[0.86,0.58,0.44]],
+    ["TealBlue",[0.0,0.5,0.7]], ["Thistle",[0.85,0.64,0.85]], ["Turquoise",[0.0,1.0,0.8]],
+    ["Violet",[0.5,0.0,0.5]], ["VioletRed",[1.0,0.2,0.6]], ["WildStrawberry",[1.0,0.04,0.61]],
+    ["YellowGreen",[0.6,1.0,0.2]], ["YellowOrange",[1.0,0.6,0.0]]
+];
+
+// Populate Dictionary
+DEFS.forEach(function(item) {
+    COLOR_LIB[item[0]] = rgbToCmyk(item[1][0], item[1][1], item[1][2]);
+});
+
+/**
+ * 2. MATH ENGINE
+ * Using standard Math.pow for compatibility.
+ */
+function cmykMix(c1, c2, p) {
+    var r = p / 100.0;
+    return [
+        r * c1[0] + (1 - r) * c2[0],
+        r * c1[1] + (1 - r) * c2[1],
+        r * c1[2] + (1 - r) * c2[2],
+        r * c1[3] + (1 - r) * c2[3]
+    ];
+}
+
+function cmykToRgb(c) {
+    var k = c[3];
+    return [(1-c[0])*(1-k), (1-c[1])*(1-k), (1-c[2])*(1-k)];
+}
+
+function rgbToLab(rgb) {
+    var r = rgb[0], g = rgb[1], b = rgb[2];
+    r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = (b > 0.04045) ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+    var x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+    var y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+    var z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+    x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+    y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+    z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+    return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)];
+}
+
+function deltaE2000(lab1, lab2) {
+    var L1 = lab1[0], a1 = lab1[1], b1 = lab1[2];
+    var L2 = lab2[0], a2 = lab2[1], b2 = lab2[2];
+    var avgL = (L1 + L2) / 2;
+    var C1 = Math.sqrt(Math.pow(a1, 2) + Math.pow(b1, 2));
+    var C2 = Math.sqrt(Math.pow(a2, 2) + Math.pow(b2, 2));
+    var avgC = (C1 + C2) / 2;
+    var G = 0.5 * (1 - Math.sqrt(Math.pow(avgC, 7) / (Math.pow(avgC, 7) + Math.pow(25, 7))));
+    var a1p = (1 + G) * a1;
+    var a2p = (1 + G) * a2;
+    var C1p = Math.sqrt(Math.pow(a1p, 2) + Math.pow(b1, 2));
+    var C2p = Math.sqrt(Math.pow(a2p, 2) + Math.pow(b2, 2));
+    var avgCp = (C1p + C2p) / 2;
+    var h1p = (C1p === 0) ? 0 : Math.atan2(b1, a1p) * 180 / Math.PI;
+    if (h1p < 0) h1p += 360;
+    var h2p = (C2p === 0) ? 0 : Math.atan2(b2, a2p) * 180 / Math.PI;
+    if (h2p < 0) h2p += 360;
+    var deltaHp = h2p - h1p;
+    if (Math.abs(deltaHp) > 180) deltaHp -= (h2p > h1p) ? 360 : -360;
+    var deltaH_dist = 2 * Math.sqrt(C1p * C2p) * Math.sin(deltaHp * Math.PI / 360);
+    var avgHp = (Math.abs(h1p - h2p) > 180) ? (h1p + h2p + 360) / 2 : (h1p + h2p) / 2;
+    var T = 1 - 0.17 * Math.cos((avgHp - 30) * Math.PI / 180) +
+            0.24 * Math.cos((2 * avgHp) * Math.PI / 180) +
+            0.32 * Math.cos((3 * avgHp + 6) * Math.PI / 180) -
+            0.20 * Math.cos((4 * avgHp - 63) * Math.PI / 180);
+    var SL = 1 + (0.015 * Math.pow(avgL - 50, 2)) / Math.sqrt(20 + Math.pow(avgL - 50, 2));
+    var SC = 1 + 0.045 * avgCp;
+    var SH = 1 + 0.015 * avgCp * T;
+    var RT = -2 * Math.sqrt(Math.pow(avgCp, 7) / (Math.pow(avgCp, 7) + Math.pow(25, 7))) * Math.sin((60 * Math.exp(-Math.pow((avgHp - 275) / 25, 2))) * Math.PI / 180);
+    return Math.sqrt(
+        Math.pow((L2 - L1) / SL, 2) +
+        Math.pow((C2p - C1p) / SC, 2) +
+        Math.pow(deltaH_dist / SH, 2) +
+        RT * (C2p - C1p) / SC * deltaH_dist / SH
+    );
+}
+
+function distEuclidean(rgb1, rgb2) {
+    return Math.sqrt(
+        Math.pow(rgb1[0] - rgb2[0], 2) +
+        Math.pow(rgb1[1] - rgb2[1], 2) +
+        Math.pow(rgb1[2] - rgb2[2], 2)
+    );
+}
+
+/**
+ * 3. SOLVER & ASYNC LOGIC
+ */
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function runSolver() {
+    var btn = document.getElementById('solveBtn');
+    var status = document.getElementById('statusText');
+    var spinner = document.getElementById('spinner');
+    var tbody = document.querySelector('#resultsTable tbody');
+    var targetPreview = document.getElementById('targetPreview');
+    var resultPreview = document.getElementById('resultPreview');
+
+    // UI Lock
+    btn.disabled = true; 
+    spinner.style.display = 'block';
+    
+    try {
+        // Parse Inputs
+        var hex = document.getElementById('targetHex').value.replace(/^#/, '');
+        if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+        var val = parseInt(hex, 16);
+        if (isNaN(val)) throw "Invalid Hex Color";
+        
+        var tRgb = [(val >> 16) & 255, (val >> 8) & 255, val & 255].map(x => x / 255);
+        var tLab = rgbToLab(tRgb);
+        
+        // Update Target Preview
+        targetPreview.style.backgroundColor = '#' + hex;
+
+        var depth = parseInt(document.getElementById('depth').value);
+        var step = parseInt(document.getElementById('stepSize').value);
+        var beam = parseInt(document.getElementById('beamWidth').value);
+        var metric = document.getElementById('metric').value;
+
+        var getGap = function(candRgb) {
+            return (metric === 'lab') ? deltaE2000(rgbToLab(candRgb), tLab) : distEuclidean(candRgb, tRgb);
+        };
+
+        // --- Depth 0 (Base Colors) ---
+        status.innerText = "Scanning base colors...";
+        await sleep(20);
+
+        var currentGen = [];
+        for (var name in COLOR_LIB) {
+            var rgb = cmykToRgb(COLOR_LIB[name]);
+            currentGen.push({
+                gap: getGap(rgb),
+                cmyk: COLOR_LIB[name],
+                expr: name,
+                rgb: rgb
+            });
+        }
+        currentGen.sort(function(a, b) { return a.gap - b.gap; });
+        var bestResults = [currentGen[0]];
+
+        // --- Depths 1 to N ---
+        for (var k = 1; k <= depth; k++) {
+            status.innerText = "Calculating Depth " + k + " (Beam: " + beam + ")...";
+            await sleep(10); // UI Refresh
+
+            var nextGen = [];
+            var candidates = currentGen.slice(0, beam);
+
+            // Chunking for performance
+            var chunkSize = 50;
+            for (var i = 0; i < candidates.length; i += chunkSize) {
+                var chunk = candidates.slice(i, i + chunkSize);
+                
+                for (var j = 0; j < chunk.length; j++) {
+                    var cand = chunk[j];
+                    for (var bName in COLOR_LIB) {
+                        // Optimization: Avoid Red!50!Red or Red!50!Green!50!Green
+                        if (cand.expr.endsWith(bName)) continue;
+
+                        for (var p = step; p < 100; p += step) {
+                            var nCmyk = cmykMix(cand.cmyk, COLOR_LIB[bName], p);
+                            var nRgb = cmykToRgb(nCmyk);
+                            nextGen.push({
+                                gap: getGap(nRgb),
+                                cmyk: nCmyk,
+                                expr: cand.expr + "!" + p + "!" + bName,
+                                rgb: nRgb
+                            });
+                        }
+                    }
+                }
+                // Yield every few chunks
+                if (i % 150 === 0) await sleep(0);
+            }
+
+            if (nextGen.length > 0) {
+                nextGen.sort(function(a, b) { return a.gap - b.gap; });
+                bestResults.push(nextGen[0]);
+                currentGen = nextGen; // Pass top candidates to next level
+            }
+        }
+
+        // --- Finish ---
+        status.innerText = "Optimization Complete.";
+        tbody.innerHTML = "";
+        bestResults.sort(function(a, b) { return a.gap - b.gap; });
+
+        // Update Match Preview
+        var top = bestResults[0];
+        var topHex = rgbToHex(top.rgb);
+        resultPreview.style.backgroundColor = topHex;
+
+        // Render Table
+        bestResults.forEach(function(res, idx) {
+            var hex = rgbToHex(res.rgb);
+            var safeCode = "\\colorbox{" + res.expr + "}{...}";
+            var row = "<tr>" +
+                "<td>" + (idx + 1) + "</td>" +
+                "<td>" + res.gap.toFixed(3) + "</td>" +
+                "<td><div class='vis-swatch' style='background:" + hex + "'></div><small>" + hex + "</small></td>" +
+                "<td><code>" + res.expr + "</code> " +
+                "<button class='copy-btn' onclick='copyToClip(\"" + res.expr + "\")'>Copy</button></td>" +
+                "</tr>";
+            tbody.innerHTML += row;
+        });
+
+    } catch (e) {
+        alert("Error: " + e);
+        console.error(e);
+        status.innerText = "Error occurred.";
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+    }
+}
+
+function rgbToHex(rgb) {
+    var r = Math.round(rgb[0] * 255);
+    var g = Math.round(rgb[1] * 255);
+    var b = Math.round(rgb[2] * 255);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function copyToClip(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // subtle feedback could go here
+    });
+}
+</script>
+
+</body>
+</html>
